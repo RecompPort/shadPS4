@@ -318,7 +318,7 @@ void BufferCache::EnsureResident(const Buffer* arena, u64 first_block, u64 last_
         });
         memory_offset += bind.size;
 
-        for (u32 block = 0; block < bind.size; block += block_size) {
+        for (u64 block = 0; block < bind.size; block += block_size) {
             *(bda_addrs++) = arena->BufferDeviceAddress() + bind.resourceOffset + block;
         }
         const u64 copy_size = (backing.end - backing.start) * sizeof(vk::DeviceAddress);

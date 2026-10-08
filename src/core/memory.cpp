@@ -107,11 +107,18 @@ u64 MemoryManager::ClampRangeSize(VAddr virtual_addr, u64 size) {
     }
 
     std::shared_lock lk{mutex};
-    ASSERT_MSG(IsValidMapping(virtual_addr), "Attempted to access invalid address {:#x}",
-               virtual_addr);
+    if (!IsValidMapping(virtual_addr)) {
+        LOG_WARNING(Kernel_Vmm, "Requested buffer range at invalid address {:#x}", virtual_addr);
+        return 0;
+    }
 
     // Clamp size to the remaining size of the current VMA.
     auto vma = FindVMA(virtual_addr);
+    if (!vma->second.IsMapped()) {
+        LOG_DEBUG(Kernel_Vmm, "Requested buffer range addr={:#x}, size={:#x} is not mapped",
+                  virtual_addr, size);
+        return 0;
+    }
     u64 clamped_size = vma->second.base + vma->second.size - virtual_addr;
     ++vma;
 

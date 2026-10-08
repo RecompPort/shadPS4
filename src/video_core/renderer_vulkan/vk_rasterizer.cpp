@@ -499,6 +499,9 @@ void Rasterizer::BindVertexBuffers(const GraphicsPipeline* pipeline) {
     // Map buffers for merged ranges
     for (auto& range : ranges_merged) {
         const u64 size = memory->ClampRangeSize(range.base_address, range.GetSize());
+        if (size == 0) {
+            continue;
+        }
         std::tie(range.buffer, range.offset) =
             buffer_cache.ObtainBuffer(range.base_address, size, false);
         needs_barrier |= runtime.IsBufferAccessed(range.buffer, range.offset, size);
@@ -519,6 +522,13 @@ void Rasterizer::BindVertexBuffers(const GraphicsPipeline* pipeline) {
                            buffer.base_address < range.end_address;
                 });
             ASSERT(host_buffer_info != ranges_merged.cend());
+            if (!host_buffer_info->buffer) {
+                host_buffers.emplace_back(VK_NULL_HANDLE);
+                host_offsets.push_back(0);
+                host_sizes.push_back(buffer.GetSize());
+                host_strides.push_back(buffer.GetStride());
+                continue;
+            }
             host_buffers.emplace_back(host_buffer_info->buffer->Handle());
             host_offsets.push_back(host_buffer_info->offset + buffer.base_address -
                                    host_buffer_info->base_address);
@@ -804,10 +814,12 @@ void Rasterizer::BindBuffers(const Shader::Info& stage, Shader::Backend::Binding
             }
         } else {
             const auto vsharp = desc.GetSharp(stage);
-            if (vsharp.base_address == 0 || vsharp.GetSize() == 0) {
+            const u64 size = vsharp.base_address == 0 || vsharp.GetSize() == 0
+                                 ? 0
+                                 : memory->ClampRangeSize(vsharp.base_address, vsharp.GetSize());
+            if (size == 0) {
                 buffer_infos.emplace_back(VK_NULL_HANDLE, 0, VK_WHOLE_SIZE);
             } else {
-                const u64 size = memory->ClampRangeSize(vsharp.base_address, vsharp.GetSize());
                 if (size != vsharp.GetSize()) {
                     LOG_ERROR(Render, "Clamped size from {} to {} for stage {:#x}",
                               vsharp.GetSize(), size, stage.pgm_hash);
