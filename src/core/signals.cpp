@@ -142,6 +142,21 @@ static LONG WINAPI SignalHandler(EXCEPTION_POINTERS* pExp) noexcept {
         use_static_windows_guest_red_zone_protection ? static_protection_exception : true;
     if (report_unhandled) {
         LOG_CRITICAL(Debug, "Unhandled Exception code {:#x} at {}", code, address);
+        if (code == EXCEPTION_ACCESS_VIOLATION) {
+            const auto* info = pExp->ExceptionRecord->ExceptionInformation;
+            const auto* ctx = pExp->ContextRecord;
+            LOG_CRITICAL(Debug, "Access type {} at data address {:#x}", info[0], info[1]);
+            LOG_CRITICAL(Debug,
+                         "rax={:#x} rbx={:#x} rcx={:#x} rdx={:#x} rsi={:#x} rdi={:#x} rbp={:#x} "
+                         "rsp={:#x}",
+                         ctx->Rax, ctx->Rbx, ctx->Rcx, ctx->Rdx, ctx->Rsi, ctx->Rdi, ctx->Rbp,
+                         ctx->Rsp);
+            LOG_CRITICAL(Debug,
+                         "r8={:#x} r9={:#x} r10={:#x} r11={:#x} r12={:#x} r13={:#x} r14={:#x} "
+                         "r15={:#x}",
+                         ctx->R8, ctx->R9, ctx->R10, ctx->R11, ctx->R12, ctx->R13, ctx->R14,
+                         ctx->R15);
+        }
         Common::Singleton<Core::Emulator>::Instance()->Shutdown();
     }
 
